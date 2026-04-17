@@ -128,11 +128,22 @@ def load_model():
         return None, None, None, None, None
 
 
+import subprocess
+
 model, locations, location_cols, features, report = load_model()
 
 if model is None:
-    st.error("⚠️ Model not found. Please run `python train_model.py` first.")
-    st.stop()
+    st.warning("⚙️ Model not found. Training model... please wait ⏳")
+
+    try:
+        subprocess.run(["python", "train_model.py"], check=True)
+
+        # Reload after training
+        model, locations, location_cols, features, report = load_model()
+
+    except Exception as e:
+        st.error(f"❌ Training failed: {e}")
+        st.stop()
 
 # ─────────────────────────────────────────────────────────────
 # SIDEBAR — INPUTS
