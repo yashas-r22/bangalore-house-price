@@ -129,9 +129,14 @@ def load_model():
 
 model, locations, location_cols, features, report = load_model()
 
+model, locations, location_cols, features, report = load_model()
+
 if model is None:
-    st.error("⚠️ Model not found. Please run `python train_model.py` first.")
-    st.stop()
+    import subprocess
+    st.warning("Training model... please wait ⏳")
+    subprocess.run(["python", "train_model.py"])
+
+    model, locations, location_cols, features, report = load_model()
 
 # ─────────────────────────────────────────────────────────────
 # SIDEBAR — INPUTS
