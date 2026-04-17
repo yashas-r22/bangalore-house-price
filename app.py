@@ -8,7 +8,8 @@ import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Fix: Add project root to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.predict import load_artifacts, predict_price
 
@@ -83,10 +84,10 @@ st.markdown("""
         font-size: 0.78rem;
         margin: 3px 3px 3px 0;
     }
-    .pill-blue { background: #eff6ff; color: #1d4ed8; }
+    .pill-blue  { background: #eff6ff; color: #1d4ed8; }
     .pill-green { background: #f0fdf4; color: #15803d; }
     .pill-amber { background: #fffbeb; color: #92400e; }
-    .pill-red { background: #fef2f2; color: #991b1b; }
+    .pill-red   { background: #fef2f2; color: #991b1b; }
     .section-header {
         font-size: 0.75rem;
         font-weight: 500;
@@ -129,14 +130,9 @@ def load_model():
 
 model, locations, location_cols, features, report = load_model()
 
-model, locations, location_cols, features, report = load_model()
-
 if model is None:
-    import subprocess
-    st.warning("Training model... please wait ⏳")
-    subprocess.run(["python", "train_model.py"])
-
-    model, locations, location_cols, features, report = load_model()
+    st.error("⚠️ Model not found. Please run `python train_model.py` first.")
+    st.stop()
 
 # ─────────────────────────────────────────────────────────────
 # SIDEBAR — INPUTS
@@ -179,100 +175,99 @@ tab1, tab2, tab3 = st.tabs(["💰 Price Estimate", "📊 EDA & Insights", "🤖 
 
 # ── TAB 1: PREDICTION ────────────────────────────────────────
 with tab1:
-    if predict_btn or True:   # Show estimate always, refresh on button
-        result = predict_price(
-            model=model,
-            location=location,
-            total_sqft=total_sqft,
-            bhk=bhk,
-            location_cols=location_cols,
-            features=features,
-            is_ready_to_move=is_ready,
-            area_type_enc=area_enc,
-        )
+    result = predict_price(
+        model=model,
+        location=location,
+        total_sqft=total_sqft,
+        bhk=bhk,
+        location_cols=location_cols,
+        features=features,
+        is_ready_to_move=is_ready,
+        area_type_enc=area_enc,
+    )
 
-        price = result["price_lakhs"]
-        price_cr = price / 100
+    price = result["price_lakhs"]
+    price_cr = price / 100
 
-        # Hero price card
-        price_str = f"₹ {price:.1f} L" if price < 100 else f"₹ {price_cr:.2f} Cr"
-        st.markdown(f"""
-        <div class="price-hero">
-            <div class="price-hero-label">Estimated Market Price — {location}</div>
-            <div class="price-hero-value">{price_str}</div>
-            <div class="price-hero-range">
-                Range: ₹ {result['price_low']:.1f}L — ₹ {result['price_high']:.1f}L &nbsp;·&nbsp;
-                {total_sqft:,} sqft {bhk}BHK &nbsp;·&nbsp; {availability}
-            </div>
+    # Hero price card
+    price_str = f"₹ {price:.1f} L" if price < 100 else f"₹ {price_cr:.2f} Cr"
+    st.markdown(f"""
+    <div class="price-hero">
+        <div class="price-hero-label">Estimated Market Price — {location}</div>
+        <div class="price-hero-value">{price_str}</div>
+        <div class="price-hero-range">
+            Range: ₹ {result['price_low']:.1f}L — ₹ {result['price_high']:.1f}L &nbsp;·&nbsp;
+            {total_sqft:,} sqft {bhk}BHK &nbsp;·&nbsp; {availability}
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
-        # Metrics row
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.markdown(f"""<div class="metric-card">
-                <div class="metric-label">Price per sqft</div>
-                <div class="metric-value">₹ {result['price_per_sqft']:,.0f}</div>
-                <div class="metric-sub">Built-up area rate</div>
-            </div>""", unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"""<div class="metric-card">
-                <div class="metric-label">Carpet area ~</div>
-                <div class="metric-value">{result['carpet_area_sqft']:,} sqft</div>
-                <div class="metric-sub">≈ 70% of built-up</div>
-            </div>""", unsafe_allow_html=True)
-        with col3:
-            st.markdown(f"""<div class="metric-card">
-                <div class="metric-label">EMI estimate</div>
-                <div class="metric-value">₹ {result['emi_20yr_lakhs']:.2f}L/mo</div>
-                <div class="metric-sub">20yr @ 8.5% · 80% loan</div>
-            </div>""", unsafe_allow_html=True)
-        with col4:
-            sqft_per_bhk = total_sqft // bhk
-            quality = "Spacious" if sqft_per_bhk > 700 else ("Comfortable" if sqft_per_bhk > 450 else "Compact")
-            st.markdown(f"""<div class="metric-card">
-                <div class="metric-label">Space per BHK</div>
-                <div class="metric-value">{sqft_per_bhk} sqft</div>
-                <div class="metric-sub">{quality}</div>
-            </div>""", unsafe_allow_html=True)
+    # Metrics row
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"""<div class="metric-card">
+            <div class="metric-label">Price per sqft</div>
+            <div class="metric-value">₹ {result['price_per_sqft']:,.0f}</div>
+            <div class="metric-sub">Built-up area rate</div>
+        </div>""", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""<div class="metric-card">
+            <div class="metric-label">Carpet area ~</div>
+            <div class="metric-value">{result['carpet_area_sqft']:,} sqft</div>
+            <div class="metric-sub">≈ 70% of built-up</div>
+        </div>""", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""<div class="metric-card">
+            <div class="metric-label">EMI estimate</div>
+            <div class="metric-value">₹ {result['emi_20yr_lakhs']:.2f}L/mo</div>
+            <div class="metric-sub">20yr @ 8.5% · 80% loan</div>
+        </div>""", unsafe_allow_html=True)
+    with col4:
+        sqft_per_bhk = total_sqft // bhk
+        quality = "Spacious" if sqft_per_bhk > 700 else ("Comfortable" if sqft_per_bhk > 450 else "Compact")
+        st.markdown(f"""<div class="metric-card">
+            <div class="metric-label">Space per BHK</div>
+            <div class="metric-value">{sqft_per_bhk} sqft</div>
+            <div class="metric-sub">{quality}</div>
+        </div>""", unsafe_allow_html=True)
 
-        # Insights
-        st.markdown('<p class="section-header">Smart Insights</p>', unsafe_allow_html=True)
-        insights = []
-        if total_sqft / bhk < 400:
-            insights.append(("pill-amber", "⚠️ Less than 400 sqft per BHK — unusually compact"))
-        elif total_sqft / bhk > 800:
-            insights.append(("pill-green", "✅ Spacious layout — more than 800 sqft per BHK"))
+    # Insights
+    st.markdown('<p class="section-header">Smart Insights</p>', unsafe_allow_html=True)
+    insights = []
+    if total_sqft / bhk < 400:
+        insights.append(("pill-amber", "⚠️ Less than 400 sqft per BHK — unusually compact"))
+    elif total_sqft / bhk > 800:
+        insights.append(("pill-green", "✅ Spacious layout — more than 800 sqft per BHK"))
 
-        if is_ready == 0:
-            insights.append(("pill-blue", "🏗️ Under construction — typically 10–15% cheaper than ready-to-move"))
-        else:
-            insights.append(("pill-green", "✅ Ready to move — immediate possession"))
+    if is_ready == 0:
+        insights.append(("pill-blue", "🏗️ Under construction — typically 10–15% cheaper than ready-to-move"))
+    else:
+        insights.append(("pill-green", "✅ Ready to move — immediate possession"))
 
-        if result['price_per_sqft'] > 8000:
-            insights.append(("pill-red", "🔴 Premium locality — above Bangalore average rate"))
-        elif result['price_per_sqft'] < 4000:
-            insights.append(("pill-green", "🟢 Budget-friendly locality"))
+    if result['price_per_sqft'] > 8000:
+        insights.append(("pill-red", "🔴 Premium locality — above Bangalore average rate"))
+    elif result['price_per_sqft'] < 4000:
+        insights.append(("pill-green", "🟢 Budget-friendly locality"))
 
-        if area_type == "Carpet Area":
-            insights.append(("pill-blue", "📐 Carpet area — actual usable space, no common area included"))
+    if area_type == "Carpet Area":
+        insights.append(("pill-blue", "📐 Carpet area — actual usable space, no common area included"))
 
-        pills_html = "".join([f'<span class="insight-pill {cls}">{msg}</span>' for cls, msg in insights])
-        st.markdown(pills_html, unsafe_allow_html=True)
+    pills_html = "".join([f'<span class="insight-pill {cls}">{msg}</span>' for cls, msg in insights])
+    st.markdown(pills_html, unsafe_allow_html=True)
 
-        # Why bathrooms are not a feature
-        st.markdown('<p class="section-header">Feature Explanation</p>', unsafe_allow_html=True)
-        st.markdown("""
-        <div class="why-box">
-            <strong>Why bathrooms are excluded from this model:</strong><br>
-            In the Bangalore dataset, the number of bathrooms is almost perfectly correlated with BHK
-            (2BHK → 2 baths, 3BHK → 3 baths in 85%+ of listings). Including it adds
-            <em>redundant information</em> that doesn't help the model — and can even hurt accuracy
-            by introducing multicollinearity. The real price drivers are <strong>location</strong>
-            (accounts for ~55% of variance), <strong>total sqft</strong> (~25%), and
-            <strong>BHK configuration</strong> (~12%).
-        </div>
-        """, unsafe_allow_html=True)
+    # Why bathrooms are not a feature
+    st.markdown('<p class="section-header">Feature Explanation</p>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="why-box">
+        <strong>Why bathrooms are excluded from this model:</strong><br>
+        In the Bangalore dataset, the number of bathrooms is almost perfectly correlated with BHK
+        (2BHK → 2 baths, 3BHK → 3 baths in 85%+ of listings). Including it adds
+        <em>redundant information</em> that doesn't help the model — and can even hurt accuracy
+        by introducing multicollinearity. The real price drivers are <strong>location</strong>
+        (accounts for ~55% of variance), <strong>total sqft</strong> (~25%), and
+        <strong>BHK configuration</strong> (~12%).
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── TAB 2: EDA ───────────────────────────────────────────────
 with tab2:
